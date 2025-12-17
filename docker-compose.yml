@@ -1,0 +1,142 @@
+services:
+  # =====================
+  # CATALOG SERVICE (Python/Flask + PostgreSQL)
+  # =====================
+  catalog-service:
+    build:
+      context: ./catalog-service
+      dockerfile: Dockerfile
+    container_name: catalog-service
+    ports:
+      - "6000:5000"
+    environment:
+      - DB_HOST=catalog-db
+      - DB_NAME=catalog_db
+      - DB_USER=catalog_user
+      - DB_PASS=catalog_pass
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    networks:
+      - library-net
+    restart: unless-stopped
+
+  catalog-db:
+    image: postgres:15-alpine
+    container_name: catalog-db
+    environment:
+      - POSTGRES_DB=catalog_db
+      - POSTGRES_USER=catalog_user
+      - POSTGRES_PASSWORD=catalog_pass
+    volumes:
+      - catalog-db-data:/var/lib/postgresql/data
+      - ./db-init/catalog-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - library-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog_user -d catalog_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # =====================
+  # USER SERVICE (Python/Flask + MySQL)
+  # =====================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "6001:5001"
+    environment:
+      - DB_HOST=user-db
+      - DB_NAME=user_db
+      - DB_USER=user_user
+      - DB_PASS=user_pass
+    depends_on:
+      user-db:
+        condition: service_healthy
+    networks:
+      - library-net
+    restart: unless-stopped
+
+  user-db:
+    image: mysql:8.0
+    container_name: user-db
+    environment:
+      - MYSQL_DATABASE=user_db
+      - MYSQL_USER=user_user
+      - MYSQL_PASSWORD=user_pass
+      - MYSQL_ROOT_PASSWORD=root_pass
+    volumes:
+      - user-db-data:/var/lib/mysql
+      - ./db-init/user-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - library-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user_user", "-puser_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # =====================
+  # ORDER SERVICE (PHP + MySQL)
+  # =====================
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    ports:
+      - "6002:80"
+    environment:
+      - DB_HOST=order-db
+      - DB_NAME=order_db
+      - DB_USER=order_user
+      - DB_PASS=order_pass
+    depends_on:
+      order-db:
+        condition: service_healthy
+    networks:
+      - library-net
+    restart: unless-stopped
+
+  order-db:
+    image: mysql:8.0
+    container_name: order-db
+    environment:
+      - MYSQL_DATABASE=order_db
+      - MYSQL_USER=order_user
+      - MYSQL_PASSWORD=order_pass
+      - MYSQL_ROOT_PASSWORD=root_pass
+    volumes:
+      - order-db-data:/var/lib/mysql
+      - ./db-init/order-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - library-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "order_user", "-porder_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+# =====================
+# NETWORKS
+# =====================
+networks:
+  library-net:
+    driver: bridge
+
+# =====================
+# VOLUMES (Data Persistence)
+# =====================
+volumes:
+  catalog-db-data:
+  user-db-data:
+  order-db-data:
