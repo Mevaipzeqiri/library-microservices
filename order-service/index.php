@@ -1,13 +1,11 @@
 <?php
 header('Content-Type: application/json');
 
-// Database configuration from environment variables
 $db_host = getenv('DB_HOST') ?: 'order-db';
 $db_name = getenv('DB_NAME') ?: 'order_db';
 $db_user = getenv('DB_USER') ?: 'order_user';
 $db_pass = getenv('DB_PASS') ?: 'order_pass';
 
-// Create database connection
 function getDbConnection() {
     global $db_host, $db_name, $db_user, $db_pass;
 
@@ -33,7 +31,6 @@ function getDbConnection() {
     }
 }
 
-// Initialize database table
 function initDb() {
     $conn = getDbConnection();
     $sql = "CREATE TABLE IF NOT EXISTS orders (
@@ -48,22 +45,17 @@ function initDb() {
     $conn->exec($sql);
 }
 
-// Initialize database on first request
 try {
     initDb();
 } catch (Exception $e) {
-    // Table might already exist, continue
 }
 
-// Get request method and path
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($uri, PHP_URL_PATH);
 
-// Remove trailing slash
 $path = rtrim($path, '/');
 
-// Route handling
 if ($path === '/orders' || $path === '') {
     switch ($method) {
         case 'GET':
@@ -99,7 +91,6 @@ if ($path === '/orders' || $path === '') {
     echo json_encode(['error' => 'Not found']);
 }
 
-// READ - Get all orders
 function getAllOrders() {
     try {
         $conn = getDbConnection();
@@ -113,7 +104,6 @@ function getAllOrders() {
     }
 }
 
-// READ - Get a single order
 function getOrder($orderId) {
     try {
         $conn = getDbConnection();
@@ -134,7 +124,6 @@ function getOrder($orderId) {
     }
 }
 
-// CREATE - Create a new order
 function createOrder() {
     $data = json_decode(file_get_contents('php://input'), true);
 
@@ -165,7 +154,6 @@ function createOrder() {
     }
 }
 
-// UPDATE - Update an existing order
 function updateOrder($orderId) {
     $data = json_decode(file_get_contents('php://input'), true);
 
@@ -178,7 +166,6 @@ function updateOrder($orderId) {
     try {
         $conn = getDbConnection();
 
-        // Check if order exists
         $stmt = $conn->prepare('SELECT id FROM orders WHERE id = ?');
         $stmt->execute([$orderId]);
         if (!$stmt->fetch()) {
@@ -187,7 +174,6 @@ function updateOrder($orderId) {
             return;
         }
 
-        // Build update query dynamically
         $updateFields = [];
         $values = [];
 
@@ -230,7 +216,6 @@ function updateOrder($orderId) {
     }
 }
 
-// DELETE - Delete an order
 function deleteOrder($orderId) {
     try {
         $conn = getDbConnection();
